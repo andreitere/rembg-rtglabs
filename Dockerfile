@@ -1,17 +1,27 @@
-FROM python:3.11
-
-# download this https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net.onnx
-# copy model to avoid unnecessary download
-COPY u2net.onnx /home/.u2net/u2net.onnx
+# --------------------------- stage 1 -----------------
+FROM python:3.11 AS backend-build
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY ./backend /app
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+RUN rm requirements.txt
+# --------------------------- end stage 1 -----------------
+# --------------------------- stage 2 -----------------
 
-EXPOSE 5100
+FROM python:3.11
 
-CMD ["python", "app.py"]
+WORKDIR /app
+
+# Copy the installed dependencies from the previous stage
+COPY --from=backend-build /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+
+# Copy the application source code from the previous stage
+COPY --from=backend-build /app /app
+
+# Expose port 5000
+EXPOSE 5000
+
+CMD ["python","app.py"]
