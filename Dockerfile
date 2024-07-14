@@ -1,5 +1,5 @@
 # --------------------------- stage 1 -----------------
-FROM python:3.11 AS backend-build
+FROM python:3.11-slim AS backend-build
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ RUN rm requirements.txt
 # --------------------------- end stage 1 -----------------
 # --------------------------- stage 2 -----------------
 
-FROM python:3.11
+FROM gcr.io/distroless/python3-debian12
 
 WORKDIR /app
 
@@ -22,6 +22,9 @@ COPY --from=backend-build /usr/local/lib/python3.11/site-packages /usr/local/lib
 COPY --from=backend-build /app /app
 
 # Expose port 5000
-EXPOSE 5000
+EXPOSE 5100
 
-CMD ["python","app.py"]
+ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages
+
+
+CMD ["app.py"]
