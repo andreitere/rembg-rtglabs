@@ -3,6 +3,7 @@ from rembg import remove
 from PIL import Image
 from io import BytesIO
 import requests
+from flask import request
 
 app = Flask(__name__)
 
@@ -24,8 +25,21 @@ def upload_file():
             return send_file(img_io, mimetype='image/png', as_attachment=True, download_name='_rmbg.png')
     return render_template('index.html')
 
+# Define your API key
+API_KEY = 'your_api_key_here'
+
 @app.route('/remove_background', methods=['POST'])
 def remove_background():
+    # Check if the bearer token is provided in the request headers
+    if 'Authorization' not in request.headers:
+        return 'Bearer token is missing', 401
+    
+    # Verify the bearer token
+    provided_token = request.headers['Authorization']
+    if provided_token != f'Bearer {API_KEY}':
+        return 'Invalid bearer token', 403
+    
+    # Rest of the code...
     if 'image_url' not in request.json:
         return 'No image URL provided', 400
     image_url = request.json['image_url']

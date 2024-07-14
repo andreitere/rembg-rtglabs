@@ -1,3 +1,4 @@
 flask
 rembg
 pillow
+python-dotenv

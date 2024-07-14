@@ -1,0 +1,44 @@
+name: Build Static Image
+on:
+  push:
+    branches: ['main']
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: 'alka7ex/rembg-rtglabs'
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Print environment variables
+        run: |
+          echo "REGISTRY: ${{ env.REGISTRY }}"
+          echo "IMAGE_NAME: ${{ env.IMAGE_NAME }}"
+          echo "GITHUB_ACTOR: ${{ github.actor }}"
+          echo "REMBG_API_KEYS: ${{ secrets.REMBG_API_KEYS }}"
+
+      - name: Login to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHUB_TOKEN }}
+
+      - name: Build image and push to registry
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            REMBG_API_KEYS=${{ secrets.REMBG_API_KEYS }}
+      - name: Deploy to Coolify
+        run: |
+          curl --request GET '${{ secrets.COOLIFY_WEBHOOK }}' --header 'Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}'
