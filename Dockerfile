@@ -1,30 +1,25 @@
-# --------------------------- stage 1 -----------------
-FROM python:3.11-slim AS backend-build
+# Example derived from:
+# https://github.com/GoogleContainerTools/distroless/blob/main/examples/python3-requirements/Dockerfile
+#
+# Build a virtualenv using the appropriate Debian release
+# * Install python3-venv for the built-in Python3 venv module (not installed by default)
+# * Install gcc libpython3-dev to compile C Python modules
+# * Update pip to support bdist_wheel
+FROM python:3.11-slim AS build
+RUN apt-get update && \
+    apt-get install --no-install-suggests --no-install-recommends --yes python3-venv gcc libpython3-dev && \
+    python3 -m venv /venv && \
+    /venv/bin/pip install --upgrade pip
 
+# Build the virtualenv as a separate step: Only re-execute this step when requirements.txt changes
+FROM build AS build-venv
+COPY requirements.txt /requirements.txt
+RUN /venv/bin/pip install --disable-pip-version-check -r /requirements.txt
+
+# Copy the virtualenv into a distroless image
+FROM python:3.11-slim
+COPY --from=build-venv /venv /venv
+COPY . /app
 WORKDIR /app
-
-COPY ./backend /app
-
-RUN pip install --no-cache-dir -r requirements.txt
-
-RUN rm requirements.txt
-# --------------------------- end stage 1 -----------------
-# --------------------------- stage 2 -----------------
-
-FROM gcr.io/distroless/python3-debian12
-
-WORKDIR /app
-
-# Copy the installed dependencies from the previous stage
-COPY --from=backend-build /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-
-# Copy the application source code from the previous stage
-COPY --from=backend-build /app /app
-
-# Expose port 5000
-EXPOSE 5100
-
-ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages
-
-
-CMD ["app.py"]
+EXPOSE 5000
+ENTRYPOINT ["/venv/bin/gunicorn", "-b", "0.0.0.0:5000", "wsgi:app"]
